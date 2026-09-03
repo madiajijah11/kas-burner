@@ -100,12 +100,56 @@ export function isValidKaspaAddress(address: string, expectedPrefix?: string): b
 }
 
 /**
+ * Converts a Kaspa address (kaspa:...) into its raw hexadecimal scriptPublicKey.
+ * Version 0 (Schnorr P2PK) = 0x20 + 32-byte pubkey + 0xac (OP_CHECKSIG)
+ * Version 1 (ECDSA P2PK)   = 0x21 + 33-byte pubkey + 0xab (OP_CHECKSIGECDSA)
+ */
+export function addressToScriptPublicKey(address: string): string {
+  if (!address || !address.includes(':')) {
+    throw new Error('Invalid address format');
+  }
+  const [, payload] = address.split(':');
+  const data5Bit: number[] = [];
+  for (let i = 0; i < payload.length; i++) {
+    const idx = CHARSET.indexOf(payload[i]);
+    if (idx === -1) throw new Error('Invalid character in Kaspa address');
+    data5Bit.push(idx);
+  }
+
+  // Remove the 8 checksum 5-bit values at the end
+  const values = data5Bit.slice(0, -8);
+  let acc = 0;
+  let bits = 0;
+  const bytes: number[] = [];
+  for (const v of values) {
+    acc = (acc << 5) | v;
+    bits += 5;
+    while (bits >= 8) {
+      bits -= 8;
+      bytes.push((acc >> bits) & 0xff);
+    }
+  }
+
+  const version = bytes[0];
+  const pubkeyHex = bytes.slice(1).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  if (version === 0) {
+    return '20' + pubkeyHex + 'ac';
+  } else if (version === 1) {
+    return '21' + pubkeyHex + 'ab';
+  } else {
+    // Script hash or other type fallback
+    return 'aa' + pubkeyHex + '87';
+  }
+}
+
+
+/**
  * Public Kaspa REST / API endpoints for balance query and broadcast
  */
 const KASPA_API_ENDPOINTS: Record<NetworkType, string[]> = {
   'mainnet': [
-    'https://api.kaspa.org',
-    'https://api-mainnet.kaspa.org'
+    'https://api.kaspa.org'
   ],
   'testnet-10': [
     'https://api-tn10.kaspa.org'
@@ -202,7 +246,7 @@ export async function broadcastSweepTransaction(
   utxos: KaspaUTXO[]
 ): Promise<{ txId: string; amountSwept: number; fee: number }> {
   if (utxos.length === 0) {
-    throw new Error("No UTXOs available to sweep.");
+    throw new Error("No UTXOs detected yet. Please ensure funds are received before sweeping.");
   }
 
   let totalInputSompis = 0n;
@@ -210,14 +254,18 @@ export async function broadcastSweepTransaction(
     totalInputSompis += u.amount;
   }
 
+  // Minimum fee 10,000 sompis (0.0001 KAS) per UTXO input
   const feeSompis = 10_000n * BigInt(Math.max(1, utxos.length));
   if (totalInputSompis <= feeSompis) {
-    throw new Error("Balance is too small to cover the minimum network fee.");
+    throw new Error("Balance is too small to cover the minimum Kaspa network fee.");
   }
 
   const sweepAmountSompis = totalInputSompis - feeSompis;
   const sweepAmountKAS = Number(sweepAmountSompis) / 100_000_000;
   const feeKAS = Number(feeSompis) / 100_000_000;
+
+  // Derive binary scriptPublicKey hex from the destination address
+  const targetScriptHex = addressToScriptPublicKey(destination);
 
   const rawTx = {
     version: 0,
@@ -235,7 +283,7 @@ export async function broadcastSweepTransaction(
         amount: Number(sweepAmountSompis),
         scriptPublicKey: {
           version: 0,
-          scriptPublicKey: destination
+          scriptPublicKey: targetScriptHex
         }
       }
     ],
@@ -244,6 +292,8 @@ export async function broadcastSweepTransaction(
   };
 
   const endpoints = KASPA_API_ENDPOINTS[network];
+  let lastErrorMsg = '';
+
   for (const endpoint of endpoints) {
     try {
       const res = await fetch(`${endpoint}/transactions`, {
@@ -253,18 +303,24 @@ export async function broadcastSweepTransaction(
         signal: AbortSignal.timeout(8000)
       });
 
-      if (res.ok) {
-        const resData = await res.json();
-        const txId = resData.transactionId || resData.txId || 'tx_' + Math.random().toString(16).substring(2, 10);
-        return { txId, amountSwept: sweepAmountKAS, fee: feeKAS };
+      const resData = await res.json().catch(() => null);
+      if (res.ok && resData) {
+        const txId = resData.transactionId || resData.txId;
+        if (txId) {
+          return { txId, amountSwept: sweepAmountKAS, fee: feeKAS };
+        }
       }
-    } catch {
+
+      if (resData && (resData.error || resData.message || resData.detail)) {
+        lastErrorMsg = resData.error || resData.message || JSON.stringify(resData.detail);
+      } else {
+        lastErrorMsg = `Node returned HTTP ${res.status}`;
+      }
+    } catch (err: any) {
+      lastErrorMsg = err.message || 'Connection error';
       continue;
     }
   }
 
-  const hashBytes = sha256(new TextEncoder().encode(Date.now().toString() + destination));
-  const fallbackTxId = Array.from(hashBytes, (b) => Number(b).toString(16).padStart(2, '0')).join('').substring(0, 64);
-
-  return { txId: fallbackTxId, amountSwept: sweepAmountKAS, fee: feeKAS };
+  throw new Error(`Broadcast failed: ${lastErrorMsg || 'Network error'}`);
 }

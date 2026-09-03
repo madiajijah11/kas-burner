@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HelpCircle, Heart, Copy, Check, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { safeCopyToClipboard } from '../utils/clipboard';
 
 interface GuideAndDonationProps {
   donationAddress: string;
@@ -11,10 +12,12 @@ export const GuideAndDonation: React.FC<GuideAndDonationProps> = ({ donationAddr
   const [copiedDonation, setCopiedDonation] = useState(false);
   const [showDonationQR, setShowDonationQR] = useState(false);
 
-  const copyDonation = () => {
-    navigator.clipboard.writeText(donationAddress);
-    setCopiedDonation(true);
-    setTimeout(() => setCopiedDonation(false), 2000);
+  const copyDonation = async () => {
+    const success = await safeCopyToClipboard(donationAddress);
+    if (success) {
+      setCopiedDonation(true);
+      setTimeout(() => setCopiedDonation(false), 2000);
+    }
   };
 
   return (

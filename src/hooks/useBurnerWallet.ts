@@ -85,8 +85,8 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
     if (!walletRef.current || !wallet) {
       throw new Error("No active burner wallet.");
     }
-    if (balanceKAS <= 0 && utxos.length === 0) {
-      throw new Error("No funds in burner wallet to sweep.");
+    if (balanceKAS <= 0 || utxos.length === 0) {
+      throw new Error("No funds detected in burner wallet yet. Please send KAS to this burner address first.");
     }
 
     setState('SWEEPING');
@@ -97,13 +97,7 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
         walletRef.current,
         destinationAddress,
         network,
-        utxos.length > 0 ? utxos : [{
-          txId: 'manual_' + Math.random().toString(16).substring(2, 8),
-          outputIndex: 0,
-          amount: BigInt(Math.floor(balanceKAS * 100_000_000)),
-          scriptPublicKey: '',
-          blockDaaScore: 0n
-        }]
+        utxos
       );
 
       const sweepRecord: SweepResult = {

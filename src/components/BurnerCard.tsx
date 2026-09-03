@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Copy, Check, QrCode, RefreshCw, Key, ShieldAlert } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { BurnerWallet } from '../types/wallet';
+import { safeCopyToClipboard } from '../utils/clipboard';
 
 interface BurnerCardProps {
   wallet: BurnerWallet | null;
@@ -13,10 +14,12 @@ export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => 
   const [showQR, setShowQR] = useState(false);
   const [showPrivKey, setShowPrivKey] = useState(false);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async (text: string) => {
+    const success = await safeCopyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (!wallet) {
