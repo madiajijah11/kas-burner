@@ -24,7 +24,7 @@ export const SweepForm: React.FC<SweepFormProps> = ({
   const expectedPrefix = getNetworkPrefix(network);
   const isValidAddress = isValidKaspaAddress(destination.trim(), expectedPrefix);
 
-  const estimatedFeeKAS = 0.0001;
+  const estimatedFeeKAS = 0.0025;
   const estimatedNetSweepKAS = Math.max(0, balanceKAS - estimatedFeeKAS);
 
   const handleSubmit = async (e: React.FormEvent) => {

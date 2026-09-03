@@ -236,9 +236,26 @@ export async function fetchKaspaBalance(address: string, network: NetworkType): 
   return { balanceKAS: 0, sompis: 0n, utxos: [] };
 }
 
-/**
- * Execute sweep transaction: send all UTXOs from burner to destination
- */
+
+let wasmModulePromise: Promise<any> | null = null;
+
+async function getKaspaWasm() {
+  if (!wasmModulePromise) {
+    wasmModulePromise = (async () => {
+      // @ts-ignore
+      const kaspa = await import('../wasm/kaspa/kaspa.js');
+      // @ts-ignore
+      const wasmUrlModule = await import('../wasm/kaspa/kaspa_bg.wasm?url');
+      const wasmUrl = wasmUrlModule.default || wasmUrlModule;
+      if (typeof kaspa.default === 'function') {
+        await kaspa.default(wasmUrl);
+      }
+      return kaspa;
+    })();
+  }
+  return wasmModulePromise;
+}
+
 /**
  * Execute sweep transaction: send all UTXOs from burner to destination with full cryptographic signing
  */
@@ -257,84 +274,75 @@ export async function broadcastSweepTransaction(
     totalInputSompis += u.amount;
   }
 
-  // Minimum standard fee: 10,000 sompis (0.0001 KAS) per UTXO input
-  const feeSompis = 10_000n * BigInt(Math.max(1, utxos.length));
-  if (totalInputSompis <= feeSompis) {
-    throw new Error("Balance is too small to cover the minimum Kaspa network fee.");
+  // Kaspa consensus mempool policy requires 100 sompi/gram mass fee (~163,500 sompis minimum)
+  const minRequiredFeeSompis = 250_000n * BigInt(Math.max(1, utxos.length));
+  if (totalInputSompis <= minRequiredFeeSompis) {
+    throw new Error("Balance is too small to cover the minimum Kaspa network compute mass fee (min ~0.0025 KAS).");
   }
 
-  const sweepAmountSompis = totalInputSompis - feeSompis;
-  const sweepAmountKAS = Number(sweepAmountSompis) / 100_000_000;
-  const feeKAS = Number(feeSompis) / 100_000_000;
-
-  // Derive binary scriptPublicKey hex from destination address
-  const targetScriptHex = addressToScriptPublicKey(destination);
+  const networkId = network === 'mainnet' ? 'mainnet' : 'testnet-10';
 
   let rawTxPayload: any = null;
+  let finalAmountSweptKAS = 0;
+  let finalFeeKAS = 0;
 
   try {
-    // Dynamically load kaspa-wasm
-    // @ts-ignore
-    const kaspa = await import('kaspa-wasm');
+    const kaspa = await getKaspaWasm();
 
     const privKey = new kaspa.PrivateKey(burner.privateKeyHex);
+    const kp = privKey.toKeypair();
+    const sourceAddr = kp.toAddress(networkId);
 
-    const inputs = utxos.map(u => new kaspa.TransactionInput({
-      previousOutpoint: {
-        transactionId: u.txId,
-        index: u.outputIndex
-      },
-      signatureScript: '',
-      sequence: 0,
-      sigOpCount: 1
-    }));
-
-    const outputScript = new kaspa.ScriptPublicKey(0, targetScriptHex);
-    const output = new kaspa.TransactionOutput(sweepAmountSompis, outputScript);
-
-    const tx = new kaspa.Transaction({
-      version: 0,
-      inputs,
-      outputs: [output],
-      lockTime: 0,
-      subnetworkId: "0000000000000000000000000000000000000000",
-      gas: 0,
-      payload: ""
-    });
-
-    const utxosRaw = utxos.map(u => ({
-      address: burner.address,
+    const wasmUtxos = utxos.map(u => ({
+      address: sourceAddr,
       outpoint: {
         transactionId: u.txId,
         index: u.outputIndex
       },
       utxoEntry: {
         amount: u.amount,
-        scriptPublicKey: u.scriptPublicKey || ('20' + burner.publicKeyHex + 'ac'),
+        scriptPublicKey: {
+          version: 0,
+          script: u.scriptPublicKey || ('20' + burner.publicKeyHex + 'ac')
+        },
         blockDaaScore: u.blockDaaScore,
         isCoinbase: false
       }
     }));
 
-    const utxoEntries = new kaspa.UtxoEntries(utxosRaw);
-    const signable = new kaspa.SignableTransaction(tx, utxoEntries);
+    const res = await kaspa.createTransactions({
+      networkId,
+      entries: wasmUtxos,
+      outputs: [{
+        address: destination,
+        amount: totalInputSompis
+      }],
+      changeAddress: destination,
+      feeRate: 100,
+      priorityFee: {
+        amount: 10_000n,
+        source: kaspa.FeeSource.ReceiverPays
+      }
+    });
 
-    // Compute script hashes (sighash) for every input
-    const hashes = signable.getScriptHashes();
+    if (!res.transactions || res.transactions.length === 0) {
+      throw new Error("Transaction generator produced 0 transactions.");
+    }
 
-    // Sign each sighash with the burner private key using Schnorr
-    const signatures = hashes.map((h: string) => kaspa.signScriptHash(h, privKey));
+    const pendingTx = res.transactions[0];
+    // Sign transaction with the burner private key using consensus core signer
+    pendingTx.sign([privKey], true);
 
-    // Attach valid 66-byte signatures to the inputs
-    signable.setSignatures(signatures);
+    const tx = pendingTx.transaction;
+    const sweptSompis = tx.outputs[0]?.value ? BigInt(tx.outputs[0].value) : (totalInputSompis - minRequiredFeeSompis);
+    const actualFeeSompis = res.transactions[0]?.feeAmount ? BigInt(res.transactions[0].feeAmount) : minRequiredFeeSompis;
+    finalAmountSweptKAS = Number(sweptSompis) / 100_000_000;
+    finalFeeKAS = Number(actualFeeSompis) / 100_000_000;
 
-    const signedTx = signable.tx;
-
-    // Prepare JSON payload for the Kaspa REST API /transactions endpoint
     rawTxPayload = {
       transaction: {
-        version: signedTx.version,
-        inputs: signedTx.inputs.map((i: any) => ({
+        version: tx.version,
+        inputs: tx.inputs.map((i: any) => ({
           previousOutpoint: {
             transactionId: i.previousOutpoint.transactionId,
             index: i.previousOutpoint.index
@@ -343,15 +351,15 @@ export async function broadcastSweepTransaction(
           sequence: Number(i.sequence),
           sigOpCount: i.sigOpCount
         })),
-        outputs: signedTx.outputs.map((o: any) => ({
+        outputs: tx.outputs.map((o: any) => ({
           amount: Number(o.value),
           scriptPublicKey: {
             version: o.scriptPublicKey.version,
             scriptPublicKey: o.scriptPublicKey.script
           }
         })),
-        lockTime: Number(signedTx.lock_time),
-        subnetworkId: signedTx.subnetworkId
+        lockTime: Number(tx.lock_time || 0),
+        subnetworkId: tx.subnetworkId || "0000000000000000000000000000000000000000"
       }
     };
   } catch (err: any) {
@@ -375,7 +383,11 @@ export async function broadcastSweepTransaction(
       if (res.ok && resData) {
         const txId = resData.transactionId || resData.txId;
         if (txId) {
-          return { txId, amountSwept: sweepAmountKAS, fee: feeKAS };
+          return {
+            txId,
+            amountSwept: finalAmountSweptKAS,
+            fee: finalFeeKAS
+          };
         }
       }
 

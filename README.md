@@ -4,15 +4,17 @@
 
 ![KasBurner Dark OPSEC](public/favicon.svg)
 
-KasBurner is a client-side ephemeral burner wallet generator designed for Kaspa operational security (OPSEC). It lets you receive KAS through temporary, throwaway addresses that exist exclusively in browser RAM, auto-sweep funds to your permanent cold wallet, and permanently erase private keys with zero disk or server storage.
+KasBurner is a client-side ephemeral burner wallet generator designed for Kaspa operational security (OPSEC). It lets you receive KAS through temporary, throwaway addresses that exist exclusively in browser RAM, auto-sweep funds to your permanent cold wallet with dynamically calculated consensus fees, and permanently erase private keys with zero disk or server storage.
 
 ---
 
 ## Key Features
 
 - **In-Memory Cryptographic Generation:** Creates valid `kaspa:` and `kaspatest:` addresses with Schnorr public keys entirely client-side via CSPRNG without server roundtrips.
+- **Official Browser WASM Engine:** Integrates official Kaspa WebAssembly bindings compiled for browser runtimes to construct, sign, and broadcast consensus-compliant transactions.
+- **Dynamic Compute Mass Fee (100 sompi/gram):** Automatically calculates exact transaction compute mass and applies the post-Crescendo 100 sompi/gram mempool fee policy dynamically.
+- **Receiver-Pays Auto-Sweep:** Uses `FeeSource.ReceiverPays` so that 100% of the input balance is swept directly to the destination with exact fee deduction and zero leftover dust.
 - **Strict 0-Storage Policy:** Zero cookies, zero `localStorage`, zero remote logging, and zero server storage. Verified client-side.
-- **Auto-Sweep & Wipe Routing:** Sweeps 100% of received KAS (minus minimal network fee) to your target wallet, then wipes the key immediately.
 - **RAM Zero-Filling (`0x00`):** Explicitly overwrites private key byte buffers in memory upon sweep completion or manual burn.
 - **Beginner's Guide (Built-In):** Interactive 3-step walkthrough directly inside the dashboard explaining the OPSEC workflow in plain English.
 - **Developer Donation Channel:** Built-in donation card with 1-click address copy and QR code modal to support open-source maintenance.
@@ -26,20 +28,35 @@ KasBurner is a client-side ephemeral burner wallet generator designed for Kaspa 
 ```text
 1. Share Address       2. Wait For Incoming KAS        3. Sweep & Wipe
 ┌──────────────────┐   ┌──────────────────────────┐   ┌───────────────────────────────┐
-│ Fresh in-memory  │──▶│ Live balance detection   │──▶│ Funds broadcasted to real     │
-│ burner address   │   │ via public Kaspa REST/RPC│   │ wallet; burner keys zeroed in │
-│ generated in RAM │   │ nodes (no server middle) │   │ RAM (0x00) & fresh key spawns │
+│ Fresh in-memory  │──▶│ Live balance detection   │──▶│ Dynamic compute mass fee calc │
+│ burner address   │   │ via public Kaspa REST/RPC│   │ + Schnorr tx signed in WASM;  │
+│ generated in RAM │   │ nodes (no server middle) │   │ RAM wiped (0x00) & auto-renew │
 └──────────────────┘   └──────────────────────────┘   └───────────────────────────────┘
 ```
 
 ---
 
+## Dynamic Fee & Transaction Architecture
+
+KasBurner enforces modern Kaspa network consensus and mempool policies:
+
+1. **Compute Mass Feerate:** The Kaspa network requires transactions to pay at least **100 sompi per 1 gram of compute mass** (`feeRate: 100`). A standard 1-input 1-output transaction has ~1,635 to 2,058 grams of mass, requiring a fee of ~163,500 to ~205,800 sompi (~0.0016 to ~0.0021 KAS).
+2. **Dynamic Generator:** KasBurner delegates fee calculation directly to the Kaspa WASM generator via `feeRate: 100`. The exact mass is calculated at runtime based on UTXO counts and transaction size.
+3. **`FeeSource.ReceiverPays` Sweep:** The calculated fee is subtracted cleanly from the outbound amount to the target wallet. This guarantees:
+   - No leftover dust in the burner wallet.
+   - No "Insufficient funds" errors when sweeping the entire balance.
+   - Exact compliance with Kaspa node standardness filters.
+4. **Schnorr Signature Script:** Each UTXO input is signed using BIP340 Schnorr signatures with `SIGHASH_ALL` (66 bytes: `0x41` opcode + 64-byte signature + `0x01` sighash byte), verifying seamlessly against Kaspa's `OP_CHECKSIG` script engine.
+
+---
+
 ## Technical Architecture
 
-- **Frontend:** React 18 + TypeScript + Vite
+- **Frontend:** React 18 + TypeScript + Vite (`target: esnext`)
 - **Styling:** Tailwind CSS (Dark palette: `#0B0F12`, Kaspa Cyan: `#70C7BA`, Glow: `#49EACB`)
-- **Cryptography:** `@noble/curves/secp256k1` + `@noble/hashes/sha2` (Schnorr X-only keys & Bech32 encoding)
-- **Script Converter:** Built-in `addressToScriptPublicKey()` bytecode converter for Kaspa consensus
+- **Cryptography & WASM:**
+  - Official Kaspa WebAssembly SDK (`src/wasm/kaspa/`) for transaction generation and Schnorr signing
+  - `@noble/curves/secp256k1` + `@noble/hashes/sha2` for CSPRNG key generation and Bech32 address encoding
 - **Network Interface:** Direct browser connection to public Kaspa REST/RPC endpoints (`https://api.kaspa.org`, `https://api-tn10.kaspa.org`)
 - **Deployment:** 100% static Jamstack bundle (Cloudflare Pages / Vercel / GitHub Pages)
 
@@ -59,15 +76,17 @@ kas-burner/
 │   │   ├── Header.tsx                # Title, network switcher, OPSEC status badge
 │   │   ├── BurnerCard.tsx            # Burner address, copy button, QR modal, key reveal
 │   │   ├── BalanceTracker.tsx        # Live balance counter, node sync indicator, UTXO count
-│   │   ├── SweepForm.tsx             # Destination address validator, fee estimation, Sweep & Burn
+│   │   ├── SweepForm.tsx             # Destination address validator, dynamic fee estimation, Sweep & Burn
 │   │   ├── GuideAndDonation.tsx      # Beginner's 3-step guide & developer donation card
 │   │   ├── SecurityBadge.tsx         # Cryptographic OPSEC guarantee summary
 │   │   └── WipeNotification.tsx      # Sweep broadcast confirmation & RAM zeroing alert
 │   ├── hooks/
-│   │   └── useBurnerWallet.ts        # Reactive in-memory wallet lifecycle state machine
+│   │   └── useBurnerWallet.ts        # In-memory wallet lifecycle state machine
 │   ├── services/
-│   │   ├── kaspa.ts                  # Keygen, Bech32 encoding, REST polling, tx broadcast
+│   │   ├── kaspa.ts                  # Keygen, Bech32 encoding, dynamic fee calculation, tx signing & broadcast
 │   │   └── security.ts               # Byte buffer zeroing (0x00) & storage auditor
+│   ├── wasm/
+│   │   └── kaspa/                    # Official Kaspa WebAssembly browser SDK (kaspa.js + kaspa_bg.wasm)
 │   ├── types/
 │   │   └── wallet.ts                 # Type definitions
 │   ├── utils/
@@ -75,7 +94,7 @@ kas-burner/
 │   ├── App.tsx                       # Main dashboard composition
 │   ├── main.tsx                      # Vite React entrypoint
 │   └── index.css                     # Tailwind base styles
-├── AGENTS.md                         # Master build execution plan
+├── AGENTS.md                         # Master build execution plan & Git workflow rules
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.js
@@ -117,4 +136,4 @@ kaspa:qypgw7xw60yvxv5pcjncdv4f30wanju0g64hw3204wreayajt3025qgde344ycq
 
 ## License
 
-MIT License • Open Source • Built for the Kaspa OPSEC community.
+MIT License. Open-source software built for the Kaspa community.
