@@ -1,13 +1,20 @@
 import React from 'react';
-import { ShieldCheck, Flame } from 'lucide-react';
+import { ShieldCheck, Flame, Bell } from 'lucide-react';
 import { NetworkType } from '../types/wallet';
 
 interface HeaderProps {
   network: NetworkType;
   onNetworkChange: (net: NetworkType) => void;
+  onOpenChangelog: () => void;
+  hasUnseenUpdate?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ network, onNetworkChange }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  network, 
+  onNetworkChange, 
+  onOpenChangelog,
+  hasUnseenUpdate = true 
+}) => {
   return (
     <header className="border-b border-kaspa-border/60 bg-kaspa-dark/80 backdrop-blur-md sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
@@ -21,16 +28,41 @@ export const Header: React.FC<HeaderProps> = ({ network, onNetworkChange }) => {
               <h1 className="text-xl font-bold font-mono tracking-tight text-white flex items-center">
                 Kas<span className="text-kaspa-cyan">Burner</span>
               </h1>
-              <span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-kaspa-cyan/10 text-kaspa-cyan border border-kaspa-cyan/30 rounded">
-                v1.0 MVP
-              </span>
+              <button
+                onClick={onOpenChangelog}
+                title="View What's New"
+                className="group relative flex items-center space-x-1 px-2 py-0.5 text-[10px] font-mono uppercase bg-kaspa-cyan/10 text-kaspa-cyan hover:bg-kaspa-cyan/20 border border-kaspa-cyan/30 rounded transition-colors"
+              >
+                <span>v1.1</span>
+                {hasUnseenUpdate && (
+                  <span className="flex h-1.5 w-1.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kaspa-cyan opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-kaspa-cyan"></span>
+                  </span>
+                )}
+              </button>
             </div>
             <p className="text-xs text-slate-400 font-mono hidden sm:block">Ephemeral In-Memory Kaspa OPSEC Wallets</p>
           </div>
         </div>
 
-        {/* Status Badge & Network Switcher */}
-        <div className="flex items-center space-x-3">
+        {/* Status Badge, Changelog & Network Switcher */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3">
+          {/* What's New Notification Button */}
+          <button
+            onClick={onOpenChangelog}
+            title="What's New (Changelog)"
+            className="relative flex items-center justify-center p-2 rounded-lg bg-kaspa-card border border-kaspa-border hover:border-kaspa-cyan/40 text-slate-300 hover:text-white transition-all text-xs font-mono"
+          >
+            <Bell className="w-4 h-4 text-slate-300 group-hover:text-kaspa-cyan" />
+            {hasUnseenUpdate && (
+              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kaspa-cyan opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-kaspa-cyan"></span>
+              </span>
+            )}
+          </button>
+
           <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-kaspa-card border border-emerald-500/20 text-emerald-400 text-xs font-mono">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>0-Storage Enforced</span>

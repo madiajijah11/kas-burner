@@ -16,6 +16,7 @@ KasBurner is a client-side ephemeral burner wallet generator designed for Kaspa 
 - **Receiver-Pays Auto-Sweep:** Uses `FeeSource.ReceiverPays` so that 100% of the input balance is swept directly to the destination with exact fee deduction and zero leftover dust.
 - **Strict 0-Storage Policy:** Zero cookies, zero `localStorage`, zero remote logging, and zero server storage. Verified client-side.
 - **RAM Zero-Filling (`0x00`):** Explicitly overwrites private key byte buffers in memory upon sweep completion or manual burn.
+- **Interactive "What's New" Changelog:** Built-in notification bell and release modal keeping users informed of updates while maintaining 0-storage privacy.
 - **Beginner's Guide (Built-In):** Interactive 3-step walkthrough directly inside the dashboard explaining the OPSEC workflow in plain English.
 - **Developer Donation Channel:** Built-in donation card with 1-click address copy and QR code modal to support open-source maintenance.
 - **Safe Clipboard Utility:** Resilient clipboard copying that falls back gracefully even when the browser window loses focus.
@@ -79,7 +80,10 @@ kas-burner/
 │   │   ├── SweepForm.tsx             # Destination address validator, dynamic fee estimation, Sweep & Burn
 │   │   ├── GuideAndDonation.tsx      # Beginner's 3-step guide & developer donation card
 │   │   ├── SecurityBadge.tsx         # Cryptographic OPSEC guarantee summary
-│   │   └── WipeNotification.tsx      # Sweep broadcast confirmation & RAM zeroing alert
+│   │   ├── WipeNotification.tsx      # Sweep broadcast confirmation & RAM zeroing alert
+│   │   └── ChangelogModal.tsx        # Interactive What's New modal and version history
+│   ├── data/
+│   │   └── changelog.ts              # Structured release history and feature logs
 │   ├── hooks/
 │   │   └── useBurnerWallet.ts        # In-memory wallet lifecycle state machine
 │   ├── services/
@@ -100,6 +104,17 @@ kas-burner/
 ├── tailwind.config.js
 └── vite.config.ts
 ```
+
+---
+
+## 🚀 V2 Roadmap & Upcoming Features
+
+The following features are scheduled for KasBurner V2 development:
+
+1. **Auto-Expiry Inactivity Timer (Priority #1):** Configurable countdown timer (15m, 1h, 24h) that wipes keys from RAM if left inactive.
+2. **Encrypted Session Log / Proof of Sweep (Priority #2):** Temporary in-memory log of sweep TXIDs for users who need a transaction receipt before closing the tab.
+3. **Split Routing (Priority #3):** Multi-output sweep distributing funds across multiple addresses by percentage to disrupt on-chain clustering.
+4. **Multiple Active Burners (Priority #4):** Manage concurrent disposable addresses in parallel within a single browser tab.
 
 ---
 

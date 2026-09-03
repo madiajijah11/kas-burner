@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Header } from './components/Header';
 import { BurnerCard } from './components/BurnerCard';
 import { BalanceTracker } from './components/BalanceTracker';
@@ -5,11 +6,15 @@ import { SweepForm } from './components/SweepForm';
 import { SecurityBadge } from './components/SecurityBadge';
 import { WipeNotification } from './components/WipeNotification';
 import { GuideAndDonation } from './components/GuideAndDonation';
+import { ChangelogModal } from './components/ChangelogModal';
 import { useBurnerWallet } from './hooks/useBurnerWallet';
 
 const DEVELOPER_DONATION_ADDRESS = "kaspa:qypgw7xw60yvxv5pcjncdv4f30wanju0g64hw3204wreayajt3025qgde344ycq";
 
 export function App() {
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [hasUnseenUpdate, setHasUnseenUpdate] = useState(true);
+
   const {
     network,
     changeNetwork,
@@ -28,10 +33,20 @@ export function App() {
     await sweepFunds(destination);
   };
 
+  const handleOpenChangelog = () => {
+    setIsChangelogOpen(true);
+    setHasUnseenUpdate(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0F12] text-slate-100">
       {/* Top Navigation */}
-      <Header network={network} onNetworkChange={changeNetwork} />
+      <Header
+        network={network}
+        onNetworkChange={changeNetwork}
+        onOpenChangelog={handleOpenChangelog}
+        hasUnseenUpdate={hasUnseenUpdate}
+      />
 
       {/* Main Content Dashboard */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6">
@@ -73,6 +88,12 @@ export function App() {
         {/* Security / OPSEC Guarantee */}
         <SecurityBadge />
       </main>
+
+      {/* What's New / Changelog Modal */}
+      <ChangelogModal
+        isOpen={isChangelogOpen}
+        onClose={() => setIsChangelogOpen(false)}
+      />
 
       {/* Minimal Footer */}
       <footer className="border-t border-kaspa-border/40 py-6 text-center text-xs font-mono text-slate-500">
