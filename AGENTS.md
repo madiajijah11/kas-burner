@@ -1,10 +1,30 @@
-# AGENTS.md - KasBurner MVP Build Plan
+# AGENTS.md - KasBurner Development & Agent Guidelines
 
 ## Project Overview
 - **App Name:** KasBurner
 - **Tagline:** Single-use Kaspa wallets that vanish after the transaction, keeping your real address private.
 - **Architecture:** Client-side React 18 + Vite + TypeScript + Tailwind CSS + Noble Cryptography (`@noble/curves`, `@noble/hashes`)
 - **Security Rule #1:** Zero storage (no localStorage, cookies, or remote logging). Memory wipe after sweep.
+
+---
+
+## 🛑 Git & Deployment Workflow (MANDATORY RULE)
+
+**NEVER automatically commit or push code to remote repositories without explicit user permission.**
+
+### The Required 4-Step Git Protocol:
+1. **Develop & Verify Locally:**
+   - Write code, make edits, and fix bugs.
+   - Run typecheck (`npm run typecheck`) and production build (`npm run build`).
+   - Confirm everything passes with 0 errors.
+2. **Review & Summarize Changes:**
+   - Present a clear, concise summary of modified and newly created files to the user.
+   - Show `git status` or `git diff --stat` if requested.
+3. **Ask for Confirmation:**
+   - Stop and ask the user: *"Would you like me to commit and push these changes now?"*
+   - Suggest a clear, conventional commit message (e.g. `feat: ...`, `fix: ...`, `docs: ...`).
+4. **Execute ONLY After Explicit Approval:**
+   - Perform `git add`, `git commit`, and `git push` **only** after the user responds with "yes", "commit", "push", or equivalent explicit confirmation.
 
 ---
 

@@ -239,8 +239,11 @@ export async function fetchKaspaBalance(address: string, network: NetworkType): 
 /**
  * Execute sweep transaction: send all UTXOs from burner to destination
  */
+/**
+ * Execute sweep transaction: send all UTXOs from burner to destination with full cryptographic signing
+ */
 export async function broadcastSweepTransaction(
-  _burner: BurnerWallet,
+  burner: BurnerWallet,
   destination: string,
   network: NetworkType,
   utxos: KaspaUTXO[]
@@ -254,7 +257,7 @@ export async function broadcastSweepTransaction(
     totalInputSompis += u.amount;
   }
 
-  // Minimum fee 10,000 sompis (0.0001 KAS) per UTXO input
+  // Minimum standard fee: 10,000 sompis (0.0001 KAS) per UTXO input
   const feeSompis = 10_000n * BigInt(Math.max(1, utxos.length));
   if (totalInputSompis <= feeSompis) {
     throw new Error("Balance is too small to cover the minimum Kaspa network fee.");
@@ -264,12 +267,19 @@ export async function broadcastSweepTransaction(
   const sweepAmountKAS = Number(sweepAmountSompis) / 100_000_000;
   const feeKAS = Number(feeSompis) / 100_000_000;
 
-  // Derive binary scriptPublicKey hex from the destination address
+  // Derive binary scriptPublicKey hex from destination address
   const targetScriptHex = addressToScriptPublicKey(destination);
 
-  const rawTx = {
-    version: 0,
-    inputs: utxos.map(u => ({
+  let rawTxPayload: any = null;
+
+  try {
+    // Dynamically load kaspa-wasm
+    // @ts-ignore
+    const kaspa = await import('kaspa-wasm');
+
+    const privKey = new kaspa.PrivateKey(burner.privateKeyHex);
+
+    const inputs = utxos.map(u => new kaspa.TransactionInput({
       previousOutpoint: {
         transactionId: u.txId,
         index: u.outputIndex
@@ -277,20 +287,78 @@ export async function broadcastSweepTransaction(
       signatureScript: '',
       sequence: 0,
       sigOpCount: 1
-    })),
-    outputs: [
-      {
-        amount: Number(sweepAmountSompis),
-        scriptPublicKey: {
-          version: 0,
-          scriptPublicKey: targetScriptHex
-        }
-      }
-    ],
-    lockTime: 0,
-    subnetworkId: "0000000000000000000000000000000000000000"
-  };
+    }));
 
+    const outputScript = new kaspa.ScriptPublicKey(0, targetScriptHex);
+    const output = new kaspa.TransactionOutput(sweepAmountSompis, outputScript);
+
+    const tx = new kaspa.Transaction({
+      version: 0,
+      inputs,
+      outputs: [output],
+      lockTime: 0,
+      subnetworkId: "0000000000000000000000000000000000000000",
+      gas: 0,
+      payload: ""
+    });
+
+    const utxosRaw = utxos.map(u => ({
+      address: burner.address,
+      outpoint: {
+        transactionId: u.txId,
+        index: u.outputIndex
+      },
+      utxoEntry: {
+        amount: u.amount,
+        scriptPublicKey: u.scriptPublicKey || ('20' + burner.publicKeyHex + 'ac'),
+        blockDaaScore: u.blockDaaScore,
+        isCoinbase: false
+      }
+    }));
+
+    const utxoEntries = new kaspa.UtxoEntries(utxosRaw);
+    const signable = new kaspa.SignableTransaction(tx, utxoEntries);
+
+    // Compute script hashes (sighash) for every input
+    const hashes = signable.getScriptHashes();
+
+    // Sign each sighash with the burner private key using Schnorr
+    const signatures = hashes.map((h: string) => kaspa.signScriptHash(h, privKey));
+
+    // Attach valid 66-byte signatures to the inputs
+    signable.setSignatures(signatures);
+
+    const signedTx = signable.tx;
+
+    // Prepare JSON payload for the Kaspa REST API /transactions endpoint
+    rawTxPayload = {
+      transaction: {
+        version: signedTx.version,
+        inputs: signedTx.inputs.map((i: any) => ({
+          previousOutpoint: {
+            transactionId: i.previousOutpoint.transactionId,
+            index: i.previousOutpoint.index
+          },
+          signatureScript: i.signatureScript,
+          sequence: Number(i.sequence),
+          sigOpCount: i.sigOpCount
+        })),
+        outputs: signedTx.outputs.map((o: any) => ({
+          amount: Number(o.value),
+          scriptPublicKey: {
+            version: o.scriptPublicKey.version,
+            scriptPublicKey: o.scriptPublicKey.script
+          }
+        })),
+        lockTime: Number(signedTx.lock_time),
+        subnetworkId: signedTx.subnetworkId
+      }
+    };
+  } catch (err: any) {
+    throw new Error(`Failed to cryptographically sign transaction: ${err.message || err}`);
+  }
+
+  // Broadcast the fully signed transaction to Kaspa API
   const endpoints = KASPA_API_ENDPOINTS[network];
   let lastErrorMsg = '';
 
@@ -299,8 +367,8 @@ export async function broadcastSweepTransaction(
       const res = await fetch(`${endpoint}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transaction: rawTx }),
-        signal: AbortSignal.timeout(8000)
+        body: JSON.stringify(rawTxPayload),
+        signal: AbortSignal.timeout(10000)
       });
 
       const resData = await res.json().catch(() => null);
