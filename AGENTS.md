@@ -8,6 +8,26 @@
 
 ---
 
+## 🤖 Multi-Agent Development Standards (Cross-Agent Alignment)
+
+All AI agents (DeepSeek Harness, Claude Code, Gemini CLI, Cursor, Copilot, Cline, Windsurf, etc.) working on KasBurner must adhere to the same operational boundaries:
+
+1. **Strict Zero-Storage Invariant:**
+   - Under NO circumstances may an agent introduce `localStorage`, `sessionStorage`, cookies, server databases, or telemetry tracking.
+   - All state must reside in volatile RAM and be cleared using `secureZero` (0x00).
+2. **Dynamic Feerate & WASM Compliance:**
+   - Always calculate fees dynamically using the standard 100 sompi/gram compute mass feerate (`feeRate: 100`).
+   - Use `FeeSource.ReceiverPays` so that sweep transactions leave zero dust.
+3. **Spec-First Engineering:**
+   - For any multi-step feature, formulate a design specification and implementation plan before writing code.
+   - Document plans in `docs/superpowers/plans/` and specs in `docs/superpowers/specs/`.
+4. **Mandatory Local Verification:**
+   - An agent must verify `npm run typecheck` and `npm run build` with 0 errors before reporting a task complete.
+5. **Human Authority on Git Operations:**
+   - NEVER automatically commit or push code. Always present changes to the user and request confirmation first.
+
+---
+
 ## 🛑 Git & Deployment Workflow (MANDATORY RULE)
 
 **NEVER automatically commit or push code to remote repositories without explicit user permission.**
