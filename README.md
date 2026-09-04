@@ -14,6 +14,7 @@ KasBurner is a client-side ephemeral burner wallet generator designed for Kaspa 
 - **Official Browser WASM Engine:** Integrates official Kaspa WebAssembly bindings compiled for browser runtimes to construct, sign, and broadcast consensus-compliant transactions.
 - **Dynamic Compute Mass Fee (100 sompi/gram):** Automatically calculates exact transaction compute mass and applies the post-Crescendo 100 sompi/gram mempool fee policy dynamically.
 - **Receiver-Pays Auto-Sweep:** Uses `FeeSource.ReceiverPays` so that 100% of the input balance is swept directly to the destination with exact fee deduction and zero leftover dust.
+- **Auto-Expiry Inactivity Timer:** Configurable countdown timer (15m, 1h, 24h) with crisp JetBrains Mono display that automatically zeroes RAM keys on unattended sessions, guarded by zero-dust active fund preservation.
 - **Strict 0-Storage Policy:** Zero cookies, zero `localStorage`, zero remote logging, and zero server storage. Verified client-side.
 - **RAM Zero-Filling (`0x00`):** Explicitly overwrites private key byte buffers in memory upon sweep completion or manual burn.
 - **Interactive "What's New" Changelog:** Built-in notification bell and release modal keeping users informed of updates while maintaining 0-storage privacy.
@@ -111,7 +112,7 @@ kas-burner/
 
 The following features are scheduled for KasBurner V2 development:
 
-1. **Auto-Expiry Inactivity Timer (Priority #1):** Configurable countdown timer (15m, 1h, 24h) that wipes keys from RAM if left inactive.
+1. **Auto-Expiry Inactivity Timer (Priority #1) [COMPLETED in v2.0.0]:** Configurable countdown timer (15m, 1h, 24h) that zeroes RAM keys if left inactive, guarded by zero-dust balance protection.
 2. **Encrypted Session Log / Proof of Sweep (Priority #2):** Temporary in-memory log of sweep TXIDs for users who need a transaction receipt before closing the tab.
 3. **Split Routing (Priority #3):** Multi-output sweep distributing funds across multiple addresses by percentage to disrupt on-chain clustering.
 4. **Multiple Active Burners (Priority #4):** Manage concurrent disposable addresses in parallel within a single browser tab.

@@ -81,9 +81,10 @@
 
 The following features are staged for Phase 6 (V2 Expansion):
 
-1. **Auto-Expiry Inactivity Timer (Priority #1):**
-   - Configurable countdown timer (15m, 1h, 24h).
-   - Automatically executes memory wipe (`secureZero`) if the tab is left unattended.
+1. **Auto-Expiry Inactivity Timer (Priority #1) [COMPLETED]:**
+   - [x] Configurable countdown timer (15m, 1h, 24h).
+   - [x] Automatically executes memory wipe (`secureZero`) if the tab is left unattended.
+   - [x] Zero-dust safety guard halts key erasure when wallet holds active balance.
 2. **Encrypted Temporary Session Log / Proof of Sweep (Priority #2):**
    - Ephemeral in-memory receipt log showing previous sweep TXIDs and timestamps before browser tab closure.
 3. **Split Routing (Priority #3):**

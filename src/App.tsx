@@ -38,6 +38,8 @@ export function App() {
     setHasUnseenUpdate(false);
   };
 
+  const isTimerActive = Boolean(wallet) && (state === 'READY' || state === 'FUNDED');
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0F12] text-slate-100">
       {/* Top Navigation */}
@@ -64,7 +66,13 @@ export function App() {
         <WipeNotification sweepResult={lastSweep} state={state} />
 
         {/* Burner Key Card */}
-        <BurnerCard wallet={wallet} onRefresh={generateNewBurner} />
+        <BurnerCard
+          wallet={wallet}
+          onRefresh={generateNewBurner}
+          balanceKAS={balanceKAS}
+          isTimerEnabled={isTimerActive}
+          onExpire={wipeMemory}
+        />
 
         {/* Balance & Sweep Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

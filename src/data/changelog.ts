@@ -11,10 +11,29 @@ export interface ChangelogItem {
 
 export const CHANGELOG_DATA: ChangelogItem[] = [
   {
+    version: 'v2.0.0',
+    date: 'September 2026',
+    title: 'Auto-Expiry Inactivity Timer (V2 Launch)',
+    badge: 'Latest',
+    changes: [
+      {
+        type: 'security',
+        text: 'Auto-Expiry Inactivity Timer: Automated memory wipe (secureZero 0x00) with selectable 15m, 1h, and 24h presets.'
+      },
+      {
+        type: 'feature',
+        text: 'Zero-Dust Safety Guard: Automatically blocks key erasure if active funds remain in the temporary burner wallet.'
+      },
+      {
+        type: 'infra',
+        text: 'Background Delta Tracking: Resilient real-time countdown calculation withstanding browser tab background hibernation.'
+      }
+    ]
+  },
+  {
     version: 'v1.1.0',
     date: 'September 2026',
     title: 'Dynamic Mass Fee Engine & In-Browser WASM',
-    badge: 'Latest',
     changes: [
       {
         type: 'feature',

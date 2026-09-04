@@ -1,18 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, QrCode, RefreshCw, Key, ShieldAlert } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { BurnerWallet } from '../types/wallet';
 import { safeCopyToClipboard } from '../utils/clipboard';
+import { AutoExpiryTimer } from './AutoExpiryTimer';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 interface BurnerCardProps {
   wallet: BurnerWallet | null;
   onRefresh: () => void;
+  balanceKAS?: number;
+  isTimerEnabled?: boolean;
+  onExpire?: () => void;
 }
 
-export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => {
+export const BurnerCard: React.FC<BurnerCardProps> = ({
+  wallet,
+  onRefresh,
+  balanceKAS = 0,
+  isTimerEnabled = false,
+  onExpire = () => {},
+}) => {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showPrivKey, setShowPrivKey] = useState(false);
+
+  const timer = useInactivityTimer({
+    durationMinutes: 60,
+    balanceKAS,
+    isEnabled: isTimerEnabled,
+    onExpire,
+  });
+
+  // Automatically reset timer when new wallet is provisioned
+  useEffect(() => {
+    if (wallet?.address) {
+      timer.resetTimer();
+    }
+  }, [wallet?.address]);
 
   const copyToClipboard = async (text: string) => {
     const success = await safeCopyToClipboard(text);
@@ -20,6 +45,11 @@ export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleManualRefresh = () => {
+    timer.resetTimer();
+    onRefresh();
   };
 
   if (!wallet) {
@@ -45,21 +75,34 @@ export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => 
         </div>
         <div className="flex items-center space-x-2">
           <button
+            type="button"
             onClick={() => setShowQR(!showQR)}
             className="p-1.5 text-slate-400 hover:text-kaspa-cyan rounded-lg hover:bg-kaspa-dark transition-colors"
             title="Toggle QR Code"
+            aria-label="Toggle QR Code"
           >
             <QrCode className="w-4 h-4" />
           </button>
           <button
-            onClick={onRefresh}
+            type="button"
+            onClick={handleManualRefresh}
             className="p-1.5 text-slate-400 hover:text-kaspa-cyan rounded-lg hover:bg-kaspa-dark transition-colors"
             title="Generate Fresh Keypair"
+            aria-label="Generate Fresh Keypair"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Auto-Expiry Inactivity Countdown */}
+      <AutoExpiryTimer
+        remainingSeconds={timer.remainingSeconds}
+        duration={timer.duration}
+        isBlockedByBalance={timer.isBlockedByBalance}
+        onDurationChange={timer.changeDuration}
+        onReset={timer.resetTimer}
+      />
 
       {/* QR Code Popover */}
       {showQR && (
@@ -76,7 +119,9 @@ export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => 
             {wallet.address}
           </code>
           <button
+            type="button"
             onClick={() => copyToClipboard(wallet.address)}
+            aria-label="Copy address to clipboard"
             className="flex-shrink-0 flex items-center space-x-1.5 px-3 py-2 bg-kaspa-card hover:bg-kaspa-cyan/20 text-slate-300 hover:text-kaspa-cyan border border-kaspa-border hover:border-kaspa-cyan/50 rounded-lg text-xs font-mono transition-all"
           >
             {copied ? (
@@ -100,7 +145,9 @@ export const BurnerCard: React.FC<BurnerCardProps> = ({ wallet, onRefresh }) => 
           <Key className="w-3.5 h-3.5 text-amber-400/70" />
           <span>RAM-Only Private Key:</span>
           <button
+            type="button"
             onClick={() => setShowPrivKey(!showPrivKey)}
+            aria-label={showPrivKey ? 'Hide private key' : 'Reveal private key'}
             className="text-slate-400 hover:text-amber-300 underline text-[11px]"
           >
             {showPrivKey ? 'Hide' : 'Reveal (Debug)'}
