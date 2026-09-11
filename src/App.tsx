@@ -82,6 +82,7 @@ export function App() {
             utxoCount={utxos.length}
           />
           <SweepForm
+            wallet={wallet}
             balanceKAS={balanceKAS}
             network={network}
             onSweep={handleSweep}

@@ -330,8 +330,13 @@ export async function broadcastSweepTransaction(
     }
 
     const pendingTx = res.transactions[0];
-    // Sign transaction with the burner private key using consensus core signer
-    pendingTx.sign([privKey], true);
+    // Sign transaction with the burner private key using consensus core signer.
+    // Pass hex string directly to avoid wasm-bindgen class prototype mismatch.
+    try {
+      pendingTx.sign([burner.privateKeyHex], true);
+    } catch {
+      pendingTx.sign([privKey], true);
+    }
 
     const tx = pendingTx.transaction;
     const sweptSompis = tx.outputs[0]?.value ? BigInt(tx.outputs[0].value) : (totalInputSompis - minRequiredFeeSompis);

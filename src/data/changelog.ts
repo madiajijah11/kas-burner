@@ -27,6 +27,14 @@ export const CHANGELOG_DATA: ChangelogItem[] = [
       {
         type: 'infra',
         text: 'Background Delta Tracking: Resilient real-time countdown calculation withstanding browser tab background hibernation.'
+      },
+      {
+        type: 'fix',
+        text: 'WASM Signature Engine: Direct hex signing resolution to prevent wasm-bindgen class prototype mismatch during transaction sweep.'
+      },
+      {
+        type: 'security',
+        text: 'Key Backup & Wipe Confirmation Guard: Explicit confirmation modal before Sweep All or Burn Now, requiring key copy or acknowledgment to prevent accidental fund loss.'
       }
     ]
   },

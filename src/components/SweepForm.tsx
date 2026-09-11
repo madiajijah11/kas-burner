@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Send, Flame, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { isValidKaspaAddress, getNetworkPrefix } from '../services/kaspa';
-import { NetworkType } from '../types/wallet';
+import { BurnerWallet, NetworkType } from '../types/wallet';
+import { KeyBackupModal } from './KeyBackupModal';
 
 interface SweepFormProps {
+  wallet: BurnerWallet | null;
   balanceKAS: number;
   network: NetworkType;
   onSweep: (destination: string) => Promise<void>;
@@ -12,6 +14,7 @@ interface SweepFormProps {
 }
 
 export const SweepForm: React.FC<SweepFormProps> = ({
+  wallet,
   balanceKAS,
   network,
   onSweep,
@@ -20,6 +23,8 @@ export const SweepForm: React.FC<SweepFormProps> = ({
 }) => {
   const [destination, setDestination] = useState('');
   const [customError, setCustomError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalAction, setModalAction] = useState<'sweep' | 'burn'>('sweep');
 
   const expectedPrefix = getNetworkPrefix(network);
   const isValidAddress = isValidKaspaAddress(destination.trim(), expectedPrefix);
@@ -47,11 +52,21 @@ export const SweepForm: React.FC<SweepFormProps> = ({
       return;
     }
 
-    try {
-      await onSweep(cleanDest);
-      setDestination('');
-    } catch (err: any) {
-      setCustomError(err.message || 'Sweep failed.');
+    setModalAction('sweep');
+    setIsModalOpen(true);
+  };
+
+  const handleModalConfirm = async () => {
+    setIsModalOpen(false);
+    if (modalAction === 'sweep') {
+      try {
+        await onSweep(destination.trim());
+        setDestination('');
+      } catch (err: any) {
+        setCustomError(err.message || 'Sweep failed.');
+      }
+    } else {
+      onEmergencyBurn();
     }
   };
 
@@ -128,9 +143,12 @@ export const SweepForm: React.FC<SweepFormProps> = ({
 
           <button
             type="button"
-            onClick={onEmergencyBurn}
-            disabled={isSweeping}
-            className="flex items-center justify-center space-x-1.5 py-3.5 px-4 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 font-mono text-xs rounded-xl transition-all"
+            onClick={() => {
+              setModalAction('burn');
+              setIsModalOpen(true);
+            }}
+            disabled={isSweeping || !wallet}
+            className="flex items-center justify-center space-x-1.5 py-3.5 px-4 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 font-mono text-xs rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             title="Discard this burner key and zero RAM immediately"
           >
             <Flame className="w-4 h-4 text-red-400" />
@@ -138,6 +156,16 @@ export const SweepForm: React.FC<SweepFormProps> = ({
           </button>
         </div>
       </form>
+
+      <KeyBackupModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleModalConfirm}
+        actionType={modalAction}
+        wallet={wallet ?? null}
+        balanceKAS={balanceKAS}
+        destinationAddress={destination.trim()}
+      />
     </div>
   );
 };
