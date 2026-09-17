@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Flame, Bell, Github } from 'lucide-react';
 import { NetworkType } from '../types/wallet';
+import { CHANGELOG_DATA } from '../data/changelog';
 
 interface HeaderProps {
   network: NetworkType;
@@ -33,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="View What's New"
                 className="group relative flex items-center space-x-1 px-2 py-0.5 text-[10px] font-mono uppercase bg-kaspa-cyan/10 text-kaspa-cyan hover:bg-kaspa-cyan/20 border border-kaspa-cyan/30 rounded transition-colors"
               >
-                <span>v1.1</span>
+                <span>{CHANGELOG_DATA[0]?.version || 'v2.0.0'}</span>
                 {hasUnseenUpdate && (
                   <span className="flex h-1.5 w-1.5 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kaspa-cyan opacity-75"></span>
