@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Flame, Bell } from 'lucide-react';
+import { ShieldCheck, Flame, Bell, Github } from 'lucide-react';
 import { NetworkType } from '../types/wallet';
 
 interface HeaderProps {
@@ -48,13 +48,24 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Status Badge, Changelog & Network Switcher */}
         <div className="flex items-center space-x-2.5 sm:space-x-3">
+          {/* GitHub Repository Link */}
+          <a
+            href="https://github.com/madiajijah11/kas-burner"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="GitHub Repository"
+            className="flex items-center justify-center p-2 rounded-lg bg-kaspa-card border border-kaspa-border hover:border-kaspa-cyan/40 text-slate-300 hover:text-white transition-all text-xs font-mono group"
+          >
+            <Github className="w-4 h-4 text-slate-300 group-hover:text-kaspa-cyan transition-colors" />
+          </a>
+
           {/* What's New Notification Button */}
           <button
             onClick={onOpenChangelog}
             title="What's New (Changelog)"
-            className="relative flex items-center justify-center p-2 rounded-lg bg-kaspa-card border border-kaspa-border hover:border-kaspa-cyan/40 text-slate-300 hover:text-white transition-all text-xs font-mono"
+            className="relative flex items-center justify-center p-2 rounded-lg bg-kaspa-card border border-kaspa-border hover:border-kaspa-cyan/40 text-slate-300 hover:text-white transition-all text-xs font-mono group"
           >
-            <Bell className="w-4 h-4 text-slate-300 group-hover:text-kaspa-cyan" />
+            <Bell className="w-4 h-4 text-slate-300 group-hover:text-kaspa-cyan transition-colors" />
             {hasUnseenUpdate && (
               <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kaspa-cyan opacity-75"></span>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Github } from 'lucide-react';
 import { Header } from './components/Header';
 import { BurnerCard } from './components/BurnerCard';
 import { BalanceTracker } from './components/BalanceTracker';
@@ -106,7 +107,19 @@ export function App() {
 
       {/* Minimal Footer */}
       <footer className="border-t border-kaspa-border/40 py-6 text-center text-xs font-mono text-slate-500">
-        <p>KasBurner • Open Source Kaspa OPSEC Tool • 0 Server Storage • Powered by Kaspa BlockDAG</p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+          <p>KasBurner • Open Source Kaspa OPSEC Tool • 0 Server Storage • Powered by Kaspa BlockDAG</p>
+          <span className="hidden sm:inline">•</span>
+          <a
+            href="https://github.com/madiajijah11/kas-burner"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-kaspa-cyan transition-colors"
+          >
+            <Github className="w-3.5 h-3.5" />
+            <span>GitHub</span>
+          </a>
+        </div>
       </footer>
     </div>
   );
