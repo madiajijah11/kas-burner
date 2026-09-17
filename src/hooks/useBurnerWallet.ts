@@ -11,6 +11,7 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
   const [utxos, setUtxos] = useState<KaspaUTXO[]>([]);
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [lastSweep, setLastSweep] = useState<SweepResult | null>(null);
+  const [sessionLogs, setSessionLogs] = useState<SweepResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const walletRef = useRef<BurnerWallet | null>(null);
@@ -101,13 +102,16 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
       );
 
       const sweepRecord: SweepResult = {
+        id: result.txId,
         txId: result.txId,
         amountSweptKAS: result.amountSwept,
         feeKAS: result.fee,
         destination: destinationAddress,
+        network,
         timestamp: Date.now()
       };
 
+      setSessionLogs(prev => [sweepRecord, ...prev]);
       setLastSweep(sweepRecord);
       
       // Execute secure memory wipe
@@ -139,6 +143,11 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
     }, 1500);
   }, [createNewBurner, network]);
 
+  // Clear ephemeral session logs
+  const clearSessionLogs = useCallback(() => {
+    setSessionLogs([]);
+  }, []);
+
   // Switch network
   const changeNetwork = (newNet: NetworkType) => {
     setNetwork(newNet);
@@ -154,6 +163,8 @@ export function useBurnerWallet(initialNetwork: NetworkType = 'mainnet') {
     utxos,
     isPolling,
     lastSweep,
+    sessionLogs,
+    clearSessionLogs,
     error,
     sweepFunds,
     wipeMemory,

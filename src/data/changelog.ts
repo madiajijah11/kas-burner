@@ -17,6 +17,10 @@ export const CHANGELOG_DATA: ChangelogItem[] = [
     badge: 'Latest',
     changes: [
       {
+        type: 'feature',
+        text: 'Ephemeral Session Receipt Log: In-memory proof-of-sweep log displaying TXIDs, swept amounts, network fees, and 1-click Kaspa Explorer links without disk persistence.'
+      },
+      {
         type: 'security',
         text: 'Auto-Expiry Inactivity Timer: Automated memory wipe (secureZero 0x00) with selectable 15m, 1h, and 24h presets.'
       },

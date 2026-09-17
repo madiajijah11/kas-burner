@@ -7,6 +7,7 @@ import { SweepForm } from './components/SweepForm';
 import { SecurityBadge } from './components/SecurityBadge';
 import { WipeNotification } from './components/WipeNotification';
 import { GuideAndDonation } from './components/GuideAndDonation';
+import { SessionReceiptLog } from './components/SessionReceiptLog';
 import { ChangelogModal } from './components/ChangelogModal';
 import { useBurnerWallet } from './hooks/useBurnerWallet';
 
@@ -25,6 +26,8 @@ export function App() {
     utxos,
     isPolling,
     lastSweep,
+    sessionLogs,
+    clearSessionLogs,
     sweepFunds,
     wipeMemory,
     generateNewBurner
@@ -91,6 +94,12 @@ export function App() {
             isSweeping={state === 'SWEEPING'}
           />
         </div>
+
+        {/* Session Proof of Sweep & Activity Receipts */}
+        <SessionReceiptLog
+          sessionLogs={sessionLogs}
+          onClearLogs={clearSessionLogs}
+        />
 
         {/* Guide & Donation Component */}
         <GuideAndDonation donationAddress={DEVELOPER_DONATION_ADDRESS} />

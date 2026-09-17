@@ -105,8 +105,10 @@ The following features are staged for Phase 6 (V2 Expansion):
    - [x] Configurable countdown timer (15m, 1h, 24h).
    - [x] Automatically executes memory wipe (`secureZero`) if the tab is left unattended.
    - [x] Zero-dust safety guard halts key erasure when wallet holds active balance.
-2. **Encrypted Temporary Session Log / Proof of Sweep (Priority #2):**
-   - Ephemeral in-memory receipt log showing previous sweep TXIDs and timestamps before browser tab closure.
+2. **Ephemeral Session Receipt Log / Proof of Sweep (Priority #2) [COMPLETED]:**
+   - [x] Ephemeral in-memory receipt log showing previous sweep TXIDs, timestamps, swept amounts, and network fees.
+   - [x] Network-aware 1-click Kaspa Explorer links for Mainnet, Testnet-10, and Testnet-11.
+   - [x] 1-click Copy TXID and manual "Clear Log" RAM wipe control.
 3. **Split Routing (Priority #3):**
    - Sweep funds to multiple destination addresses simultaneously with percentage distribution to disrupt on-chain clustering.
 4. **Multiple Active Burners (Priority #4):**

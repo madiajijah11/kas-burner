@@ -19,9 +19,11 @@ export interface KaspaUTXO {
 }
 
 export interface SweepResult {
+  id: string;
   txId: string;
   amountSweptKAS: number;
   feeKAS: number;
   destination: string;
+  network: NetworkType;
   timestamp: number;
 }
